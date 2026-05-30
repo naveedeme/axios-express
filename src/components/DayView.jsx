@@ -6,24 +6,24 @@ export default function DayView({ day, theme, onComplete, isCompleted, onNext, o
   const isDark = theme === 'dark'
   const topic = TOPICS[day.topic]
   const scrollRef = useRef(null)
-  const [headerVisible, setHeaderVisible] = useState(true)
+  const [headerVisible, setHeaderVisible] = useState(false)
   const lastScrollY = useRef(0)
 
-  // Reset on day change
+  // Reset to hidden on day change
   useEffect(() => {
-    setHeaderVisible(true)
+    setHeaderVisible(false)
     lastScrollY.current = 0
     scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' })
   }, [day.day])
 
-  // Auto-hide on scroll down past 110px, auto-show when back at top
+  // Auto-hide when scrolling down past 80px — but NEVER auto-show.
+  // The user must click the peek bar to show deliberately.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const onScroll = () => {
       const y = el.scrollTop
-      if (y > 110 && lastScrollY.current <= 110) setHeaderVisible(false)
-      if (y < 30 && lastScrollY.current >= 30) setHeaderVisible(true)
+      if (y > 80 && lastScrollY.current <= 80) setHeaderVisible(false)
       lastScrollY.current = y
     }
     el.addEventListener('scroll', onScroll, { passive: true })

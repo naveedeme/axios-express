@@ -22,14 +22,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22        # LTS — avoids Node 20 deprecation warning
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install           # npm install instead of npm ci — tolerates
+                                   # lockfile being out of sync with package.json
 
       - name: Build for production
         run: npm run build

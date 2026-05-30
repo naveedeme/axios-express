@@ -332,14 +332,16 @@ function _expressFactory(__console) {
   return express;
 }
 
-// ── require() mock ─────────────────────────────────────────────
-function require(mod) {
+// ── Module mock (_mockRequire shadows any bundler require) ──────
+// Named _mockRequire so Vite's bundler never sees a bare
+// require('express') literal in source and tries to resolve it.
+function _mockRequire(mod) {
   if (mod === 'express')            return _expressFactory(__console);
   if (mod === 'dotenv')             return { config: () => {} };
-  if (mod === 'cors')               return (opts) => (req, res, next) => next && next();
+  if (mod === 'cors')               return () => (req, res, next) => next && next();
   if (mod === 'morgan')             return () => (req, res, next) => next && next();
-  if (mod === 'helmet')             return (opts) => (req, res, next) => next && next();
-  if (mod === 'express-rate-limit') return (opts) => (req, res, next) => next && next();
+  if (mod === 'helmet')             return () => (req, res, next) => next && next();
+  if (mod === 'express-rate-limit') return () => (req, res, next) => next && next();
   if (mod === 'mssql')              return {
     Int: 'Int', NVarChar: (n) => 'NVarChar(' + n + ')',
     ConnectionPool: class {
@@ -352,7 +354,6 @@ function require(mod) {
       query() { return Promise.resolve({ rows: [], rowCount: 0 }); }
     },
   };
-  // unknown — return empty object silently
   return {};
 }
 
@@ -387,6 +388,9 @@ export default function Simulator({ initialCode = '', theme = 'dark' }) {
 
     try {
       const runtime = buildRuntime()
+      // Replace require( with _mockRequire( so Vite never sees bare require()
+      // in source AND so the browser's own require (if any) is never called.
+      const safeCode = code.replace(/\brequire\s*\(/g, '_mockRequire(')
       const wrapped = `
         ${runtime}
         const console = __console;
@@ -395,7 +399,7 @@ export default function Simulator({ initialCode = '', theme = 'dark' }) {
           uptime: () => 12345,
         };
         try {
-          ${code}
+          ${safeCode}
         } catch(__err) {
           __console.error('Runtime error: ' + __err.message);
         }
@@ -470,11 +474,12 @@ export function ChallengeSimulator({ starterCode, solutionCode, theme }) {
     window.__mockResolve = (method, url) => resolveMock(method, url)
     try {
       const runtime = buildRuntime()
+      const safeCode = code.replace(/\brequire\s*\(/g, '_mockRequire(')
       const wrapped = `
         ${runtime}
         const console = __console;
         const process = { env: { NODE_ENV: 'development' }, uptime: () => 12345 };
-        try { ${code} } catch(__err) { __console.error('Runtime error: ' + __err.message); }
+        try { ${safeCode} } catch(__err) { __console.error('Runtime error: ' + __err.message); }
       `
       const AsyncFn = Object.getPrototypeOf(async function(){}).constructor
       await new AsyncFn('__console', wrapped)(capturedConsole)
