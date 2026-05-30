@@ -456,6 +456,7 @@ export default function Simulator({ initialCode = '', theme = 'dark' }) {
 export function ChallengeSimulator({ starterCode, solutionCode, theme }) {
   const [code, setCode] = useState(starterCode)
   const [showSolution, setShowSolution] = useState(false)
+  const savedUserCode = useRef(starterCode)  // preserves user's edits across the toggle
   const [output, setOutput] = useState([])
   const [running, setRunning] = useState(false)
   const outputRef = useRef(null)
@@ -498,7 +499,12 @@ export function ChallengeSimulator({ starterCode, solutionCode, theme }) {
   const toggleSolution = () => {
     const next = !showSolution
     setShowSolution(next)
-    setCode(next ? solutionCode : starterCode)
+    if (next) {
+      savedUserCode.current = code   // snapshot user's work before showing solution
+      setCode(solutionCode)
+    } else {
+      setCode(savedUserCode.current) // restore exactly what the user had written
+    }
   }
 
   return (
@@ -509,7 +515,7 @@ export function ChallengeSimulator({ starterCode, solutionCode, theme }) {
     }}>
       <Toolbar
         isDark={isDark} running={running}
-        onReset={() => { setCode(starterCode); setShowSolution(false) }}
+        onReset={() => { setCode(starterCode); setShowSolution(false); savedUserCode.current = starterCode }}
         onRun={runCode}
         label="challenge.js"
         accentColor="#f59e0b"
